@@ -1,5 +1,6 @@
 # main.py
-from api_clients import get_aggregated_coin_data, get_top_50_coins_cmc
+from services.aggregator import get_aggregated_coin_data
+from services.market_data import get_top_50_coins_cmc
 from ai_processor import generate_crypto_assistant_response
 
 # --- Helper function to extract coin identifier ---
