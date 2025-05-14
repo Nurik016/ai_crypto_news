@@ -10,8 +10,6 @@ def configure_gemini():
         return None
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        # For choosing the right model, check the Gemini documentation for available models.
-        # 'gemini-pro' is a good general-purpose model for text generation.
         model = genai.GenerativeModel('gemini-2.0-flash')
         return model
     except Exception as e:
@@ -75,21 +73,7 @@ def generate_crypto_assistant_response(user_query, aggregated_data):
     
     full_prompt = "\n".join(prompt_parts)
 
-    # Optional: Print the prompt for debugging
-    # print("\n--- Sending Prompt to Gemini ---")
-    # print(full_prompt)
-    # print("--- End of Prompt ---\n")
-
     try:
-        # Generation configuration (optional, for more control)
-        # generation_config = genai.types.GenerationConfig(
-        #     candidate_count=1,
-        #     # stop_sequences=['.'], # Example: stop when a period is generated
-        #     max_output_tokens=250,
-        #     temperature=0.7 # Controls randomness: lower is more deterministic
-        # )
-        # response = model.generate_content(full_prompt, generation_config=generation_config)
-
         response = model.generate_content(full_prompt)
         
         # Handle cases where the response might not have text or parts
@@ -116,67 +100,3 @@ def generate_crypto_assistant_response(user_query, aggregated_data):
         if hasattr(response, 'prompt_feedback'):
              print(f"Prompt Feedback: {response.prompt_feedback}")
         return f"Sorry, I encountered an error while generating the response: {e}"
-
-# --- Main Test Block for AI Processor ---
-if __name__ == '__main__':
-    print("--- Testing AI Processor ---")
-
-    if not GEMINI_API_KEY:
-        print("GEMINI_API_KEY not set. Cannot run AI processor tests.")
-    else:
-        # Test 1: Mocked aggregated data for Bitcoin (successful fetch)
-        mock_btc_data = {
-            "query_identifier": "BTC",
-            "resolved_name_for_news": "Bitcoin",
-            "market_data": {
-                "id": 1, "name": "Bitcoin", "symbol": "BTC", "rank": 1,
-                "price_usd": 60000.50, "market_cap_usd": 1200000000000.00,
-                "percent_change_24h": 2.5, "last_updated": "2023-10-27T10:00:00Z"
-            },
-            "news_articles": [
-                {"title": "Bitcoin Hits New High Amidst Market Excitement", "source_id": "CryptoNewsToday"},
-                {"title": "Institutional Investors Pouring into Bitcoin ETFs", "source_id": "FinanceWeekly"},
-                {"title": "Experts Predict Further Growth for BTC", "source_id": "MarketWatch"}
-            ]
-        }
-        user_query_btc = "What's the latest on Bitcoin price and news?"
-        print(f"\nTest 1: Querying for Bitcoin: \"{user_query_btc}\"")
-        response_btc = generate_crypto_assistant_response(user_query_btc, mock_btc_data)
-        print("\nAI Response for Bitcoin:")
-        print(response_btc)
-
-        # Test 2: Mocked data for a coin where market data failed, but news exists
-        mock_unknown_coin_data = {
-            "query_identifier": "ALTCOINX",
-            "resolved_name_for_news": "AltcoinX",
-            "market_data": None, # Market data fetch failed
-            "news_articles": [
-                {"title": "AltcoinX Announces Major Partnership", "source_id": "AltNews"},
-                {"title": "Community Bullish on AltcoinX Future", "source_id": "CryptoCommunity"}
-            ]
-        }
-        user_query_unknown = "Tell me about AltcoinX."
-        print(f"\nTest 2: Querying for AltcoinX (market data missing): \"{user_query_unknown}\"")
-        response_unknown = generate_crypto_assistant_response(user_query_unknown, mock_unknown_coin_data)
-        print("\nAI Response for AltcoinX:")
-        print(response_unknown)
-
-        # Test 3: Mocked data where everything failed (e.g., non-existent coin)
-        mock_failed_data = {
-            "query_identifier": "FAKETOKEN",
-            "resolved_name_for_news": "FAKETOKEN",
-            "market_data": None,
-            "news_articles": [] # No news
-        }
-        user_query_failed = "What's up with FAKETOKEN?"
-        print(f"\nTest 3: Querying for FAKETOKEN (all data missing): \"{user_query_failed}\"")
-        response_failed = generate_crypto_assistant_response(user_query_failed, mock_failed_data)
-        print("\nAI Response for FAKETOKEN:")
-        print(response_failed)
-        
-        # Test 4: Specific query about market cap
-        user_query_marketcap = "What's the market cap of Bitcoin?"
-        print(f"\nTest 4: Querying for Bitcoin Market Cap: \"{user_query_marketcap}\"")
-        response_marketcap = generate_crypto_assistant_response(user_query_marketcap, mock_btc_data)
-        print("\nAI Response for Bitcoin Market Cap:")
-        print(response_marketcap)

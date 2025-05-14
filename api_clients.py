@@ -4,7 +4,7 @@ import json
 from config import (
     COINMARKETCAP_API_KEY, COINMARKETCAP_API_URL,
     NEWSDATA_API_KEY, NEWSDATA_API_URL,
-    DEFAULT_NEWS_LANGUAGE, GEMINI_API_KEY # GEMINI_API_KEY not used here yet
+    DEFAULT_NEWS_LANGUAGE, GEMINI_API_KEY
 )
 
 # --- CoinMarketCap API Functions ---
@@ -233,110 +233,3 @@ def get_aggregated_coin_data(coin_identifier):
     }
     
     return aggregated_data
-
-
-# --- Main Test Block ---
-if __name__ == '__main__':
-    # --- Initialize test variables ---
-    top_coins_cmc = get_top_50_coins_cmc()
-    
-    # Default test coin values (used if fetching top_coins_cmc fails or is empty)
-    test_coin_symbol = "BTC"
-    test_coin_name = "Bitcoin"
-    second_test_coin_name = "Ethereum"
-    second_test_coin_symbol = "ETH" # For testing aggregation by name which might need symbol lookup
-
-    if top_coins_cmc and len(top_coins_cmc) > 0:
-        test_coin_symbol = top_coins_cmc[0]['symbol']
-        test_coin_name = top_coins_cmc[0]['name']
-        if len(top_coins_cmc) > 1:
-            second_test_coin_name = top_coins_cmc[1]['name']
-            second_test_coin_symbol = top_coins_cmc[1]['symbol']
-    else:
-        print("Warning: Could not fetch top coins list from CMC. Using default test values.")
-
-    # --- Test CoinMarketCap Individual Functions ---
-    print("\n" + "="*15 + " Testing CoinMarketCap Individual Functions " + "="*15)
-    if top_coins_cmc:
-        print(f"Successfully fetched {len(top_coins_cmc)} coins from CMC.")
-        print("Top 3 coins from CMC:")
-        for i, coin in enumerate(top_coins_cmc[:3]):
-            print(f"  {i+1}. {coin['name']} ({coin['symbol']}): Rank {coin['rank']}, Price ${coin.get('price_usd', 0):.2f}")
-    
-    print(f"\nFetching details for {test_coin_name} ({test_coin_symbol}) from CMC...")
-    coin_details_cmc = get_coin_data_cmc(coin_symbol=test_coin_symbol)
-    if coin_details_cmc:
-        print(f"  Price: ${coin_details_cmc.get('price_usd', 0):.2f}, Market Cap: ${coin_details_cmc.get('market_cap_usd', 0):.0f}")
-    else:
-        print(f"  Failed to fetch details for {test_coin_symbol}.")
-    
-    # --- Test Newsdata.io Individual Function ---
-    print("\n" + "="*15 + " Testing Newsdata.io Individual Function " + "="*15)
-    if not NEWSDATA_API_KEY:
-        print("Skipping Newsdata.io tests as API key is not configured.")
-    else:
-        print(f"\nFetching news for '{test_coin_name}' from Newsdata.io...")
-        news_articles_test = get_newsdata_io_news(coin_name=test_coin_name, size=3)
-        if news_articles_test is not None: # Check for None to indicate potential API key issues etc.
-            if news_articles_test: # Check if list is non-empty
-                print(f"Found {len(news_articles_test)} news articles for {test_coin_name}:")
-                for i, article in enumerate(news_articles_test):
-                    print(f"  {i+1}. {article['title']} (Source: {article.get('source_id', 'N/A')})")
-            else:
-                print(f"No news articles found for {test_coin_name} on Newsdata.io.")
-        else:
-            print(f"Failed to fetch news for {test_coin_name} from Newsdata.io (check API key or error messages).")
-
-    # --- Test Data Aggregation Function ---
-    print("\n" + "="*20 + " Testing Data Aggregation " + "="*20)
-    
-    # Test 1: Using a known symbol (e.g., BTC)
-    print(f"\n--- Aggregating for '{test_coin_symbol}' (Symbol) ---")
-    aggregated_data_sym = get_aggregated_coin_data(coin_identifier=test_coin_symbol)
-    if aggregated_data_sym:
-        print(f"\n--- Formatted Aggregated Data for '{aggregated_data_sym.get('resolved_name_for_news', test_coin_symbol)}' ---")
-        if aggregated_data_sym["market_data"]:
-            md = aggregated_data_sym["market_data"]
-            print(f"  Market Data: Name: {md.get('name', 'N/A')}, Symbol: {md.get('symbol', 'N/A')}, Price: ${md.get('price_usd', 0):.2f}, Rank: {md.get('rank', 'N/A')}")
-        else:
-            print(f"  No market data found for '{test_coin_symbol}'.")
-        
-        print(f"  News Articles ({len(aggregated_data_sym['news_articles'])} found):")
-        for i, news in enumerate(aggregated_data_sym['news_articles'][:3]): # Show first 3 news
-            print(f"    {i+1}. {news.get('title', 'No Title')}")
-        if not aggregated_data_sym['news_articles']:
-            print("    No news articles found.")
-    else:
-        print(f"Failed to aggregate any data for '{test_coin_symbol}'.")
-
-    # Test 2: Using a known name (e.g., Ethereum)
-    # get_aggregated_coin_data will try to use "Ethereum" as a symbol for CMC, which might fail.
-    # News should work with the name "Ethereum".
-    print(f"\n--- Aggregating for '{second_test_coin_name}' (Name) ---")
-    aggregated_data_name = get_aggregated_coin_data(coin_identifier=second_test_coin_name)
-    if aggregated_data_name:
-        print(f"\n--- Formatted Aggregated Data for '{aggregated_data_name.get('resolved_name_for_news', second_test_coin_name)}' ---")
-        if aggregated_data_name["market_data"]: # This might be None if name isn't a recognized symbol by CMC
-            md = aggregated_data_name["market_data"]
-            print(f"  Market Data: Name: {md.get('name', 'N/A')}, Symbol: {md.get('symbol', 'N/A')}, Price: ${md.get('price_usd', 0):.2f}, Rank: {md.get('rank', 'N/A')}")
-        else:
-            print(f"  No market data found for '{second_test_coin_name}' when used as a symbol for CMC (this might be expected).")
-        
-        print(f"  News Articles ({len(aggregated_data_name['news_articles'])} found):")
-        for i, news in enumerate(aggregated_data_name['news_articles'][:3]):
-            print(f"    {i+1}. {news.get('title', 'No Title')}")
-        if not aggregated_data_name['news_articles']:
-            print("    No news articles found.")
-    else:
-        print(f"Failed to aggregate any data for '{second_test_coin_name}'.")
-
-    # Test 3: Non-existent coin
-    print("\n--- Aggregating for 'NonExistentCoinXYZ123' ---")
-    aggregated_non_existent = get_aggregated_coin_data(coin_identifier="NonExistentCoinXYZ123")
-    if not aggregated_non_existent:
-        print("Correctly handled aggregation for a non-existent coin (returned None).")
-    elif not aggregated_non_existent.get("market_data") and not aggregated_non_existent.get("news_articles"):
-         print("Correctly handled aggregation for a non-existent coin (no data found in dict).")
-    else:
-        # This case should ideally not be hit if the above two cover it.
-        print("Aggregation for non-existent coin did not behave as expected, some data might have been found:", aggregated_non_existent)
