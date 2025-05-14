@@ -1,4 +1,6 @@
 # main.py
+import string
+
 from services.aggregator import get_aggregated_coin_data
 from services.market_data import get_top_50_coins_cmc
 from ai_processor import generate_crypto_assistant_response
@@ -9,6 +11,7 @@ def extract_coin_identifier_from_query(query):
     Simpler extraction of a potential coin identifier (word or symbol) from the user query.
     Focuses on capitalized words or uppercase sequences.
     """
+    query = query.translate(str.maketrans('', '', string.punctuation))
     words = query.split()
     
     # Try to find a sequence of capitalized words (potential multi-word name)
@@ -56,11 +59,48 @@ def extract_coin_identifier_from_query(query):
     # Fallback for common lowercase names if no capitalized/uppercase found
     query_lower = query.lower()
     common_names_map = {
-        "bitcoin": "Bitcoin", "ethereum": "Ethereum", "solana": "Solana",
-        "ripple": "XRP", "xrp": "XRP", "cardano": "Cardano", "dogecoin": "Dogecoin",
-        "shiba inu": "Shiba Inu" 
-        # Add more common lowercase variants and their canonical form if needed
-    }
+        "bitcoin": "Bitcoin",
+        "btc": "Bitcoin",
+        "ethereum": "Ethereum",
+        "eth": "Ethereum",
+        "solana": "Solana",
+        "sol": "Solana",
+        "ripple": "XRP",
+        "xrp": "XRP",
+        "cardano": "Cardano",
+        "ada": "Cardano",
+        "dogecoin": "Dogecoin",
+        "doge": "Dogecoin",
+        "shiba inu": "Shiba Inu",
+        "shib": "Shiba Inu",
+        "binance coin": "BNB",
+        "bnb": "BNB",
+        "avalanche": "Avalanche",
+        "avax": "Avalanche",
+        "polkadot": "Polkadot",
+        "dot": "Polkadot",
+        "tron": "TRON",
+        "trx": "TRON",
+        "chainlink": "Chainlink",
+        "link": "Chainlink",
+        "polygon": "Polygon",
+        "matic": "Polygon",
+        "litecoin": "Litecoin",
+        "ltc": "Litecoin",
+        "uniswap": "Uniswap",
+        "uni": "Uniswap",
+        "stellar": "Stellar",
+        "xlm": "Stellar",
+        "aptos": "Aptos",
+        "apt": "Aptos",
+        "arbitrum": "Arbitrum",
+        "arb": "Arbitrum",
+        "internet computer": "Internet Computer",
+        "icp": "Internet Computer",
+        "vechain": "VeChain",
+        "vet": "VeChain"
+}
+
     for lc_name, canonical_form in common_names_map.items():
         if lc_name in query_lower:
             return canonical_form
