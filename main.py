@@ -11,12 +11,13 @@ def extract_coin_identifier_from_query(query):
     Simpler extraction of a potential coin identifier (word or symbol) from the user query.
     Focuses on capitalized words or uppercase sequences.
     """
-    query = query.translate(str.maketrans('', '', string.punctuation))
-    words = query.split()
+    query_clean = query.lower().translate(str.maketrans('', '', string.punctuation))
+    words = query_clean.split()
     
     # Try to find a sequence of capitalized words (potential multi-word name)
     # or a single capitalized word.
     # Also look for all-caps words (potential symbols).
+    
     
     # First pass for explicit symbols (all caps, short)
     for word in words:
@@ -59,47 +60,83 @@ def extract_coin_identifier_from_query(query):
     # Fallback for common lowercase names if no capitalized/uppercase found
     query_lower = query.lower()
     common_names_map = {
-        "bitcoin": "Bitcoin",
-        "btc": "Bitcoin",
-        "ethereum": "Ethereum",
-        "eth": "Ethereum",
-        "solana": "Solana",
-        "sol": "Solana",
-        "ripple": "XRP",
-        "xrp": "XRP",
-        "cardano": "Cardano",
-        "ada": "Cardano",
-        "dogecoin": "Dogecoin",
-        "doge": "Dogecoin",
-        "shiba inu": "Shiba Inu",
-        "shib": "Shiba Inu",
-        "binance coin": "BNB",
-        "bnb": "BNB",
-        "avalanche": "Avalanche",
-        "avax": "Avalanche",
-        "polkadot": "Polkadot",
-        "dot": "Polkadot",
-        "tron": "TRON",
-        "trx": "TRON",
-        "chainlink": "Chainlink",
-        "link": "Chainlink",
-        "polygon": "Polygon",
-        "matic": "Polygon",
-        "litecoin": "Litecoin",
-        "ltc": "Litecoin",
-        "uniswap": "Uniswap",
-        "uni": "Uniswap",
-        "stellar": "Stellar",
-        "xlm": "Stellar",
-        "aptos": "Aptos",
-        "apt": "Aptos",
-        "arbitrum": "Arbitrum",
-        "arb": "Arbitrum",
-        "internet computer": "Internet Computer",
-        "icp": "Internet Computer",
-        "vechain": "VeChain",
-        "vet": "VeChain"
+    # Bitcoin
+    "bitcoin": "BTC",
+    "btc": "BTC",
+    "bitecoin": "BTC",
+    "bitcion": "BTC",
+    "bitcoinn": "BTC",
+    # Ethereum
+    "ethereum": "ETH",
+    "eth": "ETH",
+    # Solana
+    "solana": "SOL",
+    "sol": "SOL",
+    # Ripple
+    "ripple": "XRP",
+    "xrp": "XRP",
+    # Cardano
+    "cardano": "ADA",
+    "ada": "ADA",
+    # Dogecoin
+    "dogecoin": "DOGE",
+    "doge": "DOGE",
+    # Shiba Inu
+    "shiba inu": "SHIB",
+    "shib": "SHIB",
+    # Binance Coin
+    "binance coin": "BNB",
+    "bnb": "BNB",
+    # Avalanche
+    "avalanche": "AVAX",
+    "avax": "AVAX",
+    # Polkadot
+    "polkadot": "DOT",
+    "dot": "DOT",
+    # Tron
+    "tron": "TRX",
+    "trx": "TRX",
+    # Chainlink
+    "chainlink": "LINK",
+    "link": "LINK",
+    # Polygon
+    "polygon": "MATIC",
+    "matic": "MATIC",
+    # Litecoin
+    "litecoin": "LTC",
+    "ltc": "LTC",
+    # Uniswap
+    "uniswap": "UNI",
+    "uni": "UNI",
+    # Stellar
+    "stellar": "XLM",
+    "xlm": "XLM",
+    # Aptos
+    "aptos": "APT",
+    "apt": "APT",
+    # Arbitrum
+    "arbitrum": "ARB",
+    "arb": "ARB",
+    # Internet Computer
+    "internet computer": "ICP",
+    "icp": "ICP",
+    # VeChain
+    "vechain": "VET",
+    "vet": "VET",
+    # Toncoin
+    "ton": "TON",
+    "toncoin": "TON",
 }
+
+    
+    for word in words:
+       if word in common_names_map:
+           return common_names_map[word]
+       
+    query_lower = query_clean
+    for alias, symbol in common_names_map.items():
+        if alias in query_lower:
+            return symbol
 
     for lc_name, canonical_form in common_names_map.items():
         if lc_name in query_lower:
