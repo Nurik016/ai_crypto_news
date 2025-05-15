@@ -51,25 +51,30 @@ async def top50_coins(message: Message):
             response_text = "Sorry, I couldn't fetch the top 50 coins right now."
     await message.answer(response_text)
 
-@dp.message(Command('news'))
-async def get_news(message: Message, command: CommandObject):
-    if command.args:
-        print(command.args)
+@dp.message()
+async def request_bot(message: Message):
+    user_text = message.text.strip().lower()
+
+    # Проверяем, содержит ли сообщение "news" или "новости"
+    if "news" in user_text or "новости" in user_text:
+        coin_identifier = extract_coin_identifier_from_query(message.text)
+        if not coin_identifier:
+            await message.answer("Не удалось распознать название монеты для новостей.")
+            return
+        
+        coin_identifier = (coin_identifier or "").replace(" ", "").lower()
         loop = asyncio.get_event_loop()
-        news_text = await loop.run_in_executor(None, generate_news, command.args)
+        news_text = await loop.run_in_executor(None, generate_news, coin_identifier)
 
         chunks = split_message(news_text)
         for chunk in chunks:
             await message.reply(chunk)
-    else:
-        await message.answer("Нет аргументов")
+        return
 
-@dp.message()
-async def request_bot(message: Message):
-    user_text = message.text.strip()
-    coin_identifier = extract_coin_identifier_from_query(user_text)
+    # Если нет ключевых слов, продолжаем с обычным ответом AI
+    coin_identifier = extract_coin_identifier_from_query(message.text)
     if not coin_identifier:
-        await message.answer("I couldn't identify a cryptocurrency in your query. Please try again.")
+        await message.answer("Я не смог определить криптовалюту в вашем запросе. Пожалуйста, попробуйте ещё раз.")
         return
 
     aggregated_data = get_aggregated_coin_data(coin_identifier)
@@ -80,9 +85,9 @@ async def request_bot(message: Message):
             "market_data": None,
             "news_articles": []
         }
-    response = generate_crypto_assistant_response(user_text, aggregated_data)
-    await message.answer(response)
 
+    response = generate_crypto_assistant_response(message.text, aggregated_data)
+    await message.answer(response)
 
     
 async def main():  
