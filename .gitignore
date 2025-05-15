@@ -1,1 +1,4 @@
 .env
+aienv
+.aienv
+__pycache__
