@@ -107,37 +107,79 @@ def extract_coin_identifier_from_query(query):
             
     return None
 
-
 def main():
     print("Welcome to the AI Crypto Assistant!")
     print("You can ask questions like: 'What's the latest news about Ethereum?' or 'Tell me about Bitcoin price.'")
     print("Type 'top50' to see the list of top 50 coins by market cap.")
+    print("Or use 'news <coin>' to get news about a specific coin quickly.")
     print("Type 'quit' or 'exit' to leave.")
 
-    # Fetch top 50 coins once at the start for better coin identification
     print("\nFetching initial coin list...")
     top_50_coins_list = get_top_50_coins_cmc()
     if top_50_coins_list:
         print(f"Fetched {len(top_50_coins_list)} coins for reference.")
-        # Prepare a list of dicts with 'name', 'symbol', 'id' for easier lookup
         known_coin_refs_for_resolution = [
-            {'name': c['name'], 'symbol': c['symbol'], 'id': c.get('id')} 
+            {'name': c['name'], 'symbol': c['symbol'], 'id': c.get('id')}
             for c in top_50_coins_list
         ]
     else:
         print("Could not fetch the top 50 coins list. Coin identification might be less accurate.")
         known_coin_refs_for_resolution = []
 
-
     while True:
         user_query = input("\nAsk me about crypto (or type 'quit'): ").strip()
-
         if not user_query:
             continue
         if user_query.lower() in ['quit', 'exit']:
             print("Goodbye!")
             break
-        
+
+        if user_query.lower().startswith('news '):
+            arg = user_query[5:].strip()
+            if not arg:
+                print("Please provide a coin name or symbol after 'news'. Example: news Bitcoin")
+                continue
+
+            extracted_term = arg
+            print(f"Fetching news for '{extracted_term}'...")
+
+            target_symbol_for_api = None
+            resolved_coin_name = extracted_term
+
+            for coin_detail in known_coin_refs_for_resolution:
+                if extracted_term.upper() == coin_detail['symbol'].upper():
+                    target_symbol_for_api = coin_detail['symbol']
+                    resolved_coin_name = coin_detail['name']
+                    break
+                if extracted_term.lower() == coin_detail['name'].lower():
+                    target_symbol_for_api = coin_detail['symbol']
+                    resolved_coin_name = coin_detail['name']
+                    break
+
+            if not target_symbol_for_api:
+                target_symbol_for_api = extracted_term
+                resolved_coin_name = extracted_term
+
+            aggregated_data = get_aggregated_coin_data(target_symbol_for_api)
+
+            if not aggregated_data or not aggregated_data.get('news_articles'):
+                print(f"Sorry, couldn't find news for '{target_symbol_for_api}'.")
+                continue
+
+            print(f"Latest news for {resolved_coin_name}:")
+            for article in aggregated_data.get('news_articles', [])[:5]:  # Показываем до 5 новостей
+                title = article.get('title', 'No title')
+                description = article.get('description') or article.get('summary') or ''
+                short_desc = (description[:150] + '...') if len(description) > 150 else description
+                source = article.get('source_id', 'Unknown source')
+                url = article.get('url', '')
+                print(f"- {title}")
+                if short_desc:
+                    print(f"  {short_desc}")
+                print(f"  Source: {source}")
+
+            continue
+
         if user_query.lower() == 'top50':
             if top_50_coins_list:
                 print("\n--- Top 50 Coins by Market Cap ---")
@@ -149,98 +191,46 @@ def main():
                 print("Sorry, I couldn't retrieve the top 50 coins list at this moment.")
             continue
 
-        # --- Step 1: Extract potential coin term from query ---
+        # Остальная логика как в предыдущем примере — обработка запроса по конкретной крипте,
+        # получение данных и генерация ответа ассистента.
         extracted_term = extract_coin_identifier_from_query(user_query)
-
         if not extracted_term:
             print("I couldn't identify a specific cryptocurrency in your query. Please try rephrasing, e.g., 'Tell me about Bitcoin'.")
-            # Optionally, send the generic query to the AI without specific data
-            # generic_response = generate_crypto_assistant_response(user_query, {"market_data": None, "news_articles": []})
-            # print(f"\nAI Assistant (General): {generic_response}")
             continue
-        
+
         print(f"\nExtracted term: '{extracted_term}'. Attempting to resolve...")
 
-        # --- Step 2: Resolve extracted term to a canonical coin (symbol) ---
         target_symbol_for_api = None
-        resolved_coin_name = extracted_term # Default name for news if not resolved better
-        
-        # Try to match extracted_term (as name or symbol) with our known_coin_refs_for_resolution
+        resolved_coin_name = extracted_term
         for coin_detail in known_coin_refs_for_resolution:
-            # Check symbol match first (more precise)
             if extracted_term.upper() == coin_detail['symbol'].upper():
-                target_symbol_for_api = coin_detail['symbol'] 
+                target_symbol_for_api = coin_detail['symbol']
                 resolved_coin_name = coin_detail['name']
-                print(f"Resolved '{extracted_term}' to official symbol: {target_symbol_for_api} ({resolved_coin_name})")
                 break
-            # Then check name match
             if extracted_term.lower() == coin_detail['name'].lower():
                 target_symbol_for_api = coin_detail['symbol']
                 resolved_coin_name = coin_detail['name']
-                print(f"Resolved '{extracted_term}' to official symbol: {target_symbol_for_api} ({resolved_coin_name}) from name match.")
                 break
-        
-        if not target_symbol_for_api:
-            # If not resolved from top 50, use the extracted_term.
-            # If it looks like a symbol (all caps, short), pass it as is.
-            # If it looks like a name, get_aggregated_coin_data will .upper() it for CMC symbol attempt.
-            if extracted_term.isupper() and 1 < len(extracted_term) < 7:
-                target_symbol_for_api = extracted_term
-                resolved_coin_name = extracted_term # News will use this if CMC doesn't return a name
-                print(f"Could not resolve '{extracted_term}' in top 50. Using '{target_symbol_for_api}' as a potential symbol directly.")
-            else:
-                target_symbol_for_api = extracted_term 
-                resolved_coin_name = extracted_term # This name will be used for news directly
-                print(f"Could not resolve '{extracted_term}' in top 50 or as a clear symbol. Passing '{target_symbol_for_api}' for aggregation.")
-        
-        # The `get_aggregated_coin_data` function is designed to take a coin_identifier.
-        # If it's a symbol, it uses it. If it's a name, it tries .upper() for CMC symbol
-        # and the original name for news. Our `target_symbol_for_api` now aims to be
-        # the best candidate (preferably a resolved symbol) for this.
-        print(f"Okay, looking for information using API target: '{target_symbol_for_api}'...")
-        
-        aggregated_data = get_aggregated_coin_data(target_symbol_for_api)
 
-        # --- Step 3: Handle Aggregated Data and Generate AI Response ---
+        if not target_symbol_for_api:
+            target_symbol_for_api = extracted_term
+            resolved_coin_name = extracted_term
+
+        aggregated_data = get_aggregated_coin_data(target_symbol_for_api)
         if not aggregated_data:
-            print(f"Sorry, I couldn't retrieve any information for '{target_symbol_for_api}'. It might be an unsupported coin or there was an issue fetching data.")
-            # Let AI try to respond based on the query and lack of specific data
-            ai_response = generate_crypto_assistant_response(user_query, 
-                                                             {"query_identifier": target_symbol_for_api, 
-                                                              "resolved_name_for_news": resolved_coin_name, # Give context
-                                                              "market_data": None, 
+            print(f"Sorry, I couldn't retrieve any information for '{target_symbol_for_api}'.")
+            ai_response = generate_crypto_assistant_response(user_query,
+                                                             {"query_identifier": target_symbol_for_api,
+                                                              "resolved_name_for_news": resolved_coin_name,
+                                                              "market_data": None,
                                                               "news_articles": []})
             print(f"\nAI Assistant: {ai_response}")
             continue
-        
-        # If aggregated_data exists but is essentially empty
-        if not aggregated_data.get("market_data") and not aggregated_data.get("news_articles"):
-             print(f"I found no specific market data or news for '{target_symbol_for_api}'.")
-             # Still, let the AI try to formulate a response based on this lack of data
-             # Pass the resolved_coin_name to the AI in this case too.
-             if "resolved_name_for_news" not in aggregated_data: # Ensure it's there
-                 aggregated_data["resolved_name_for_news"] = resolved_coin_name
-             ai_response = generate_crypto_assistant_response(user_query, aggregated_data)
-             print(f"\nAI Assistant: {ai_response}")
-             continue
 
-        # Ensure resolved_name_for_news is in aggregated_data if market_data was missing
-        # but news was found using the initially resolved_coin_name.
-        if not aggregated_data.get("market_data") and "resolved_name_for_news" not in aggregated_data.get("news_articles", {}):
-            # This case is tricky; get_aggregated_coin_data sets 'resolved_name_for_news'
-            # based on market_data if found, or the input identifier.
-            # We want the AI to know what name was used for the news part if market data failed.
-            # Let's ensure our prompt in ai_processor handles this.
-            # The `aggregated_data` from `get_aggregated_coin_data` already includes
-            # 'query_identifier' and 'resolved_name_for_news' based on its internal logic.
-            pass # The current structure of aggregated_data should be sufficient for ai_processor
-
-        print("Asking the AI...")
         ai_response = generate_crypto_assistant_response(user_query, aggregated_data)
-
-        # --- Step 4: Display Response ---
         print(f"\nAI Assistant:")
         print(ai_response)
+
 
 if __name__ == "__main__":
     main()
