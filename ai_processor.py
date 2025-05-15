@@ -104,44 +104,61 @@ def generate_crypto_assistant_response(user_query, aggregated_data):
         return f"Sorry, I encountered an error while generating the response: {e}"
     
 
+def filter_news_by_coin(news_list, coin_name):
+    coin_name_lower = coin_name.lower()
+    filtered = []
+    for article in news_list:
+        title = article.get('title')
+        desc = article.get('description')
+
+        # Безопасно приводим к строке и к нижнему регистру
+        title_text = title.lower() if isinstance(title, str) else ""
+        desc_text = desc.lower() if isinstance(desc, str) else ""
+
+        if coin_name_lower in title_text or coin_name_lower in desc_text:
+            filtered.append(article)
+    return filtered
+
+
 def generate_news(coin_name):
     model = configure_gemini()
     if not model:
         return "Sorry, I couldn't connect to the AI model at the moment."
-    
+
     news = get_newsdata_io_news(coin_name)
-    
-    prompt = []
-    prompt.append(f"Analyze this text and give me a summary of each news. Provide also at least 200 words about every news. Dont forget to add the link at the end.")
-    prompt.append(f"\nNews: \"{news}\"")
-    
-    full_prompt = "\n".join(prompt)
-    
+    news = filter_news_by_coin(news, coin_name)
+    if not news:
+        return "No news found specifically related to this coin."
+
+    news_text = ""
+    for i, article in enumerate(news):
+        title = article.get('title', 'No title')
+        desc = article.get('description', 'No description')
+        link = article.get('link', '')
+        news_text += f"{i+1}. {title}\n{desc}\nLink: {link}\n\n"
+
+    prompt = (
+        "You are an expert crypto analyst.\n"
+        "Summarize each news article briefly, then provide at least 200 words detailed explanation per article.\n"
+        "Include the link at the end of each summary.\n"
+        f"Here are the news articles:\n\n{news_text}"
+    )
+
     try:
         response = None
-        response = model.generate_content(full_prompt)
-        
-        # Handle cases where the response might not have text or parts
-        if response.parts:
-            return response.text
-        elif hasattr(response, 'text'): # Check if .text attribute exists directly
+        response = model.generate_content(prompt)
+        if hasattr(response, 'parts') and response.parts:
+            return response.parts[0].text
+        elif hasattr(response, 'text'):
             return response.text
         else:
-            # Investigate the response structure if this happens.
-            # print("Gemini response structure:", response)
-            # This part is to try and extract text if the primary methods fail.
-            # It attempts to handle different possible response structures.
-            try:
-                # Check if response.candidates[0].content.parts[0].text exists
-                if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
-                    return response.candidates[0].content.parts[0].text
-            except (IndexError, AttributeError) as e:
-                print(f"Could not extract text from Gemini response (candidates): {e}")
-            return "Sorry, I received an empty or unparseable response from the AI."
-
+            if (hasattr(response, 'candidates') and response.candidates
+                and hasattr(response.candidates[0], 'content')
+                and hasattr(response.candidates[0].content, 'parts')
+                and response.candidates[0].content.parts):
+                return response.candidates[0].content.parts[0].text
+            else:
+                return "Sorry, I received an empty or unparseable response from the AI."
     except Exception as e:
         print(f"Error during Gemini API call: {e}")
-        # You might want to inspect response.prompt_feedback if available
-        if hasattr(response, 'prompt_feedback'):
-             print(f"Prompt Feedback: {response.prompt_feedback}")
         return f"Sorry, I encountered an error while generating the response: {e}"
