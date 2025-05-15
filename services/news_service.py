@@ -6,7 +6,7 @@ from config import DEFAULT_NEWS_LANGUAGE, NEWSDATA_API_KEY, NEWSDATA_API_URL
 
 # --- Newsdata.io API Functions ---
 
-def get_newsdata_io_news(coin_name, language=DEFAULT_NEWS_LANGUAGE, size=5):
+def get_newsdata_io_news(coin_name, language=DEFAULT_NEWS_LANGUAGE, size=3):
     """
     Fetches news for a specific coin name from Newsdata.io.
     :param coin_name: The name of the cryptocurrency (e.g., "Bitcoin", "Ethereum").
@@ -18,7 +18,7 @@ def get_newsdata_io_news(coin_name, language=DEFAULT_NEWS_LANGUAGE, size=5):
         print("Error: NEWSDATA_API_KEY not set in config.")
         return None
 
-    query = f'"{coin_name}" AND (cryptocurrency OR crypto OR blockchain)'
+    query = f'"{coin_name}" AND ("crypto" OR "cryptocurrency" OR "blockchain" OR "token" OR "digital currency")'
     params = {
         'apikey': NEWSDATA_API_KEY,
         'q': query,
