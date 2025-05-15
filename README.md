@@ -106,10 +106,3 @@ python3 bot.py
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Screenshots
-(Screenshots of the CLI interface or Telegram bot interaction can be placed here)
-
-Screenshot Example 1: CLI Window
-
-Screenshot Example 2: Dialogue with Telegram Bot
