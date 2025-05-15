@@ -1,7 +1,9 @@
 # ai_processor.py
 import google.generativeai as genai
-from config import GEMINI_API_KEY
 import json # For formatting data in the prompt
+
+from config import GEMINI_API_KEY
+from services.news_service import get_newsdata_io_news
 
 def configure_gemini():
     """Configures the Gemini API with the API key."""
@@ -74,6 +76,49 @@ def generate_crypto_assistant_response(user_query, aggregated_data):
     full_prompt = "\n".join(prompt_parts)
 
     try:
+        response = model.generate_content(full_prompt)
+        
+        # Handle cases where the response might not have text or parts
+        if response.parts:
+            return response.text
+        elif hasattr(response, 'text'): # Check if .text attribute exists directly
+            return response.text
+        else:
+            # Investigate the response structure if this happens.
+            # print("Gemini response structure:", response)
+            # This part is to try and extract text if the primary methods fail.
+            # It attempts to handle different possible response structures.
+            try:
+                # Check if response.candidates[0].content.parts[0].text exists
+                if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+                    return response.candidates[0].content.parts[0].text
+            except (IndexError, AttributeError) as e:
+                print(f"Could not extract text from Gemini response (candidates): {e}")
+            return "Sorry, I received an empty or unparseable response from the AI."
+
+    except Exception as e:
+        print(f"Error during Gemini API call: {e}")
+        # You might want to inspect response.prompt_feedback if available
+        if hasattr(response, 'prompt_feedback'):
+             print(f"Prompt Feedback: {response.prompt_feedback}")
+        return f"Sorry, I encountered an error while generating the response: {e}"
+    
+
+def generate_news(coin_name):
+    model = configure_gemini()
+    if not model:
+        return "Sorry, I couldn't connect to the AI model at the moment."
+    
+    news = get_newsdata_io_news(coin_name)
+    
+    prompt = []
+    prompt.append(f"Analyze this text and give me a summary of each news. Provide also at least 200 words about every news. Dont forget to add the link at the end.")
+    prompt.append(f"\nNews: \"{news}\"")
+    
+    full_prompt = "\n".join(prompt)
+    
+    try:
+        response = None
         response = model.generate_content(full_prompt)
         
         # Handle cases where the response might not have text or parts
