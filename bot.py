@@ -4,11 +4,12 @@ import logging
   
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message  
-from aiogram.filters import CommandStart  
+from aiogram.filters import CommandStart, Command, CommandObject
 from dotenv import load_dotenv
 from main import generate_crypto_assistant_response, extract_coin_identifier_from_query
 from services.aggregator import get_aggregated_coin_data
 from services.market_data import get_top_50_coins_cmc
+from ai_processor import generate_news
 
   
 load_dotenv()
@@ -22,9 +23,23 @@ async def start(message: Message):
     # kb = InlineKeyboardMarkup(inline_keyboard=[
     #     InlineKeyboardButton(text='Top50', callback_data='top50'),
     # ])
-    await message.answer("Hello, I am Crypto Assistant Bot, You can ask me about top 50 coins, and other questions about crypto")  
+    await message.answer("Hello, I am Crypto Assistant Bot, You can ask me about top 50 coins, and about crypto symbols")  
 
-@dp.message(F.text.lower() == 'top50')
+MAX_MESSAGE_LENGTH = 4096
+
+def split_message(text):
+    # Разбивает длинный текст по 4096 символов, стараясь не резать посреди слов
+    chunks = []
+    while len(text) > MAX_MESSAGE_LENGTH:
+        split_index = text.rfind('\n', 0, MAX_MESSAGE_LENGTH)
+        if split_index == -1:
+            split_index = MAX_MESSAGE_LENGTH
+        chunks.append(text[:split_index])
+        text = text[split_index:]
+    chunks.append(text)
+    return chunks
+
+@dp.message(F.text.func(lambda text: text and text.replace(" ", "").lower() == 'top50'))
 async def top50_coins(message: Message):
     top50 = get_top_50_coins_cmc()
     if top50:
@@ -35,6 +50,19 @@ async def top50_coins(message: Message):
     else:
             response_text = "Sorry, I couldn't fetch the top 50 coins right now."
     await message.answer(response_text)
+
+@dp.message(Command('news'))
+async def get_news(message: Message, command: CommandObject):
+    if command.args:
+        print(command.args)
+        loop = asyncio.get_event_loop()
+        news_text = await loop.run_in_executor(None, generate_news, command.args)
+
+        chunks = split_message(news_text)
+        for chunk in chunks:
+            await message.reply(chunk)
+    else:
+        await message.answer("Нет аргументов")
 
 @dp.message()
 async def request_bot(message: Message):
